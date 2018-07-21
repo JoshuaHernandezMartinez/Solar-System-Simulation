@@ -3,12 +3,16 @@ package com.solar.simulation;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.ParticleEffect;
 import com.badlogic.gdx.graphics.g2d.ParticleEmitter;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.utils.Array;
 
 public class Astro {
@@ -23,10 +27,6 @@ public class Astro {
     private Texture texture;
     private ParticleEffect particleEffect;
 
-    private float time;
-    private final float MIN_TIME_SPEED = 1.0f;
-    private final float MAX_TIME_SPEED = 12000.0f;
-
     private float line_time = 0.05f;
 
     private ShapeRenderer sp;
@@ -35,31 +35,25 @@ public class Astro {
 
     private float angle = 0;
     private float t = 0;
-    private boolean createOrbit = true;
     private boolean debug = true;
     private Array<Astro> astros;
+    private Label name;
 
     public Astro(Vector2 position, Vector2 velocity,
-                 float mass, float diameter, Array<Astro> astros){
+                 float mass, float diameter, Array<Astro> astros, String name){
         this.position = position;
         this.velocity = velocity;
         this.mass = mass;
         this.diameter = diameter;
         this.astros = astros;
+        this.name = new Label(name, new Label.LabelStyle(new BitmapFont(), Color.WHITE));
 
         sp = new ShapeRenderer();
         orbit = new Array<Vector2>();
-        time = 100;
         acc = new Vector2();
     }
 
     private void update(float dt){
-
-        if(Gdx.input.isKeyJustPressed(Input.Keys.K) && time < MAX_TIME_SPEED)
-            time *= 2;
-
-        if(Gdx.input.isKeyJustPressed(Input.Keys.L) && time > MIN_TIME_SPEED)
-            time /= 2;
 
         acc = new Vector2();
 
@@ -73,31 +67,36 @@ public class Astro {
 
         acc = acc.scl(1 / mass);
 
-        velocity = velocity.add(acc.scl(dt * time));
+        velocity = velocity.add(acc.scl(dt * View.time));
 
-        position = position.add(new Vector2(velocity).scl(dt * time));
+        position = position.add(new Vector2(velocity).scl(dt * View.time));
 
-        t += dt * time;
+        t += dt * View.time;
 
-        if(createOrbit) {
-            if(t > line_time){
-                t -= line_time;
-                orbit.add(new Vector2(position));
-            }
-            angle += velocity.len() / position.len() * dt * time;
+        if(t > line_time){
+            t -= line_time;
+            orbit.add(new Vector2(position));
         }
 
+        angle += velocity.len() / position.len() * dt * View.time;
+
         if(angle > 4 * Math.PI) {
-            createOrbit = false;
+            orbit.clear();
             angle = 0;
-            //System.out.println("Orbit Completed");
         }
 
     }
 
-    public void render(SpriteBatch batch){
+    public void render(SpriteBatch batch, OrthographicCamera camera){
 
         update(Gdx.graphics.getDeltaTime());
+
+        Vector3 pos = new Vector3(position.x,
+                position.y + diameter * 2, 0);
+
+        camera.project(pos);
+
+        name.setPosition(pos.x, pos.y);
 
         if(Gdx.input.isKeyJustPressed(Input.Keys.D))
             debug = !debug;
@@ -189,11 +188,11 @@ public class Astro {
         return new Vector2(position);
     }
 
-    public Vector2 getVelocity(){
-        return new Vector2(velocity);
-    }
-
     public float getMass() {
         return mass;
+    }
+
+    public Label getName() {
+        return name;
     }
 }
